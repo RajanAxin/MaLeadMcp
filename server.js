@@ -30,5 +30,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Node API running at http://0.0.0.0:${PORT}`);
   console.log(`📡 Local access: http://localhost:${PORT}`);
   console.log(`🔗 Endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/health`);
+  console.log(`   GET  http://localhost:${PORT}/test`);
 });
