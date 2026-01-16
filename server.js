@@ -1,34 +1,72 @@
-
-import express from 'express';
-import cors from 'cors';
+import express from "express";
 
 const app = express();
-app.use(cors());
+
 app.use(express.json());
 
-// Health check endpoint
-app.get('/test', (req, res) => {
-  res.json({ 
-    status: true,
-    service: 'Lead Dial MCP server working',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: 'Lead Dial API Server',
-    endpoints: {
-      'GET /test': 'Test endpoint'
+    protocol: 'mcp',
+    version: '1.0',
+    server: {
+      name: 'LeadDial MCP Server'
+    },
+    capabilities: {
+      tools: {
+        health_check: {
+          description: 'Health check tool'
+        }
+      }
     }
   });
 });
 
-const PORT = process.env.PORT || 2000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Node API running at http://0.0.0.0:${PORT}`);
-  console.log(`📡 Local access: http://localhost:${PORT}`);
-  console.log(`🔗 Endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/test`);
+app.post('/', (req, res) => {
+  res.json({
+    protocol: 'mcp',
+    version: '1.0',
+    server: {
+      name: 'LeadDial MCP Server'
+    },
+    capabilities: {
+      tools: {
+        health_check: {
+          description: 'Health check tool'
+        }
+      }
+    }
+  });
 });
+
+
+app.get("/tools", (req, res) => {
+  res.json({
+    tools: [
+      {
+        name: "health_check",
+        description: "Health check tool",
+        input_schema: {
+          type: "object",
+          properties: {}
+        }
+      }
+    ]
+  });
+});
+
+app.post("/tools/call", (req, res) => {
+  const { name } = req.body;
+
+  if (name === "health_check") {
+    return res.json({
+      content: [{ type: "text", text: "MCP server is healthy" }]
+    });
+  }
+
+  res.status(400).json({ error: "Unknown tool" });
+});
+
+app.listen(2000, () => {
+  console.log("MCP server running on port 2000");
+});
+
