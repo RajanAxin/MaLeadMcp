@@ -33,6 +33,15 @@ app.get('/', (req, res) => {
   });
 });
 
+app.post('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'LeadDial MCP Server',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Main MCP endpoint - handles all MCP protocol requests
 app.post('/mcp', async (req, res) => {
   try {
