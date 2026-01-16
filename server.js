@@ -47,6 +47,17 @@ app.post('/mcp/', (req, res) => {
   });
 });
 
+app.get("/mcp/sse", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.status(200).end();
+});
+
+app.post("/mcp/sse", (req, res) => {
+  res.status(200).json({ status: "sse not used" });
+});
+
 
 app.get("/mcp/tools", (req, res) => {
   res.json({
