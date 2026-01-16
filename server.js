@@ -56,7 +56,8 @@ app.get("/mcp/tools", (req, res) => {
         description: "Health check tool",
         input_schema: {
           type: "object",
-          properties: {}
+          properties: {},
+          required: []
         }
       }
     ]
