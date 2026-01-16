@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/mcp/', (req, res) => {
   res.json({
     protocol: 'mcp',
     version: '1.0',
@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
   });
 });
 
-app.post('/', (req, res) => {
+app.post('/mcp/', (req, res) => {
   res.json({
     protocol: 'mcp',
     version: '1.0',
