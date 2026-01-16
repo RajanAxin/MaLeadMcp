@@ -314,6 +314,30 @@ app.get('/mcp', (req, res) => {
   });
 });
 
+app.get('/mcp/sse', (req, res) => {
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  // Send initial endpoint event
+  res.write('event: endpoint\n');
+  res.write('data: {"jsonrpc":"2.0","method":"endpoint","params":{"url":"https://developer.leaddial.co/mcp/"}}\n\n');
+
+  // Keep connection alive with heartbeat
+  const heartbeat = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 15000);
+
+  // Clean up on connection close
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    res.end();
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
