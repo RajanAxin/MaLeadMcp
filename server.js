@@ -26,13 +26,11 @@ createServer(async (req, res) => {
     return;
   }
 
-  const transport = new StreamableHTTPServerTransport({ req, res });
-
   try {
-    await mcp.connect(transport);
+    const transport = new StreamableHTTPServerTransport({ req, res });
 
-    // 🔑 THIS IS THE MISSING PIECE
-    transport.close();
+    // ✅ THIS IS THE CORRECT CALL
+    await transport.handleRequest(mcp);
 
   } catch (err) {
     console.error("MCP error:", err);
@@ -42,5 +40,5 @@ createServer(async (req, res) => {
     }
   }
 }).listen(port, "0.0.0.0", () => {
-  console.log("🚀 MCP Streamable HTTP running on port", port);
+  console.log("🚀 MCP HTTP server running at http://localhost:2000/mcp");
 });
