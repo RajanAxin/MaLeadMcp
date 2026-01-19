@@ -1,6 +1,6 @@
-import { createServer } from "http";
+import { WebSocketServer } from "ws";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { HTTPServerTransport } from "@modelcontextprotocol/sdk/server/http.js";
+import { WebSocketServerTransport } from "@modelcontextprotocol/sdk/server/ws.js";
 
 const port = 2000;
 
@@ -13,30 +13,11 @@ mcp.tool("ping", {}, async () => ({
   content: [{ type: "text", text: "pong" }],
 }));
 
-createServer((req, res) => {
-  if (req.url !== "/mcp") {
-    res.writeHead(404);
-    res.end("Not Found");
-    return;
-  }
+const wss = new WebSocketServer({ port });
 
-  if (req.method !== "POST") {
-    res.writeHead(405);
-    res.end("Method Not Allowed");
-    return;
-  }
-
-  const transport = new HTTPServerTransport({ req, res });
-
-  transport
-    .handleRequest(mcp)
-    .catch((err) => {
-      console.error("❌ MCP ERROR:", err.stack || err);
-      if (!res.headersSent) {
-        res.writeHead(500);
-        res.end("Internal Server Error");
-      }
-    });
-}).listen(port, "0.0.0.0", () => {
-  console.log("🚀 MCP HTTP server running at http://localhost:2000/mcp");
+wss.on("connection", (ws) => {
+  const transport = new WebSocketServerTransport(ws);
+  mcp.connect(transport);
 });
+
+console.log(`🚀 MCP WebSocket running on ws://localhost:${port}`);
