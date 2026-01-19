@@ -16,8 +16,11 @@ mcp.tool("ping", {}, async () => ({
 const wss = new WebSocketServer({ port });
 
 wss.on("connection", (ws) => {
+  console.log("✅ Client connected");
   const transport = new WebSocketServerTransport(ws);
   mcp.connect(transport);
 });
 
-console.log(`🚀 MCP WebSocket running on ws://localhost:${port}`);
+wss.on("listening", () => {
+  console.log(`🚀 MCP WebSocket running on ws://localhost:${port}`);
+});
