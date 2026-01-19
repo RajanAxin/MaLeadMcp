@@ -1,8 +1,6 @@
-import { WebSocketServer } from "ws";
+import { createServer } from "http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebSocketServerTransport } from "@modelcontextprotocol/sdk/server/ws.js";
-
-const port = 2000;
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 const mcp = new McpServer({
   name: "leaddial-mcp",
@@ -13,14 +11,5 @@ mcp.tool("ping", {}, async () => ({
   content: [{ type: "text", text: "pong" }],
 }));
 
-const wss = new WebSocketServer({ port });
-
-wss.on("connection", (ws) => {
-  console.log("✅ Client connected");
-  const transport = new WebSocketServerTransport(ws);
-  mcp.connect(transport);
-});
-
-wss.on("listening", () => {
-  console.log(`🚀 MCP WebSocket running on ws://localhost:${port}`);
-});
+const transport = new StdioServerTransport();
+mcp.connect(transport);
