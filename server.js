@@ -19,13 +19,12 @@ mcp.tool("ping", {}, async () => ({
 /* -----------------------------
    HTTP Server
 ----------------------------- */
+
 createServer(async (req, res) => {
   const url = new URL(
     req.url || "/",
     `http://${req.headers.host || "localhost"}`
   );
-
-  console.log("➡️", req.method, url.pathname);
 
   /* ---------- HEALTH ---------- */
   if (url.pathname === "/health") {
@@ -41,7 +40,7 @@ createServer(async (req, res) => {
     return;
   }
 
-  /* ---------- GET (NO STREAMING) ---------- */
+  /* ---------- GET (DO NOT STREAM) ---------- */
   if (req.method === "GET") {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("MCP endpoint alive. Use POST for MCP calls.");
@@ -50,6 +49,9 @@ createServer(async (req, res) => {
 
   /* ---------- POST (MCP ONLY) ---------- */
   if (req.method === "POST") {
+    let handled = false;
+
+    // Hard safety timeout (prevents curl hang forever)
     const timeout = setTimeout(() => {
       if (!res.headersSent) {
         console.error("❌ MCP TIMEOUT");
@@ -61,6 +63,7 @@ createServer(async (req, res) => {
     try {
       const transport = new StreamableHTTPServerTransport({ req, res });
       await mcp.connect(transport);
+      handled = true;
     } catch (err) {
       console.error("❌ MCP ERROR:", err);
       if (!res.headersSent) {
@@ -69,6 +72,10 @@ createServer(async (req, res) => {
       }
     } finally {
       clearTimeout(timeout);
+      if (!handled && !res.headersSent) {
+        res.writeHead(500);
+        res.end("Unhandled MCP request");
+      }
     }
     return;
   }
