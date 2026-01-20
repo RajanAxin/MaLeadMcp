@@ -7,7 +7,7 @@ const transport = new StreamableHTTPClientTransport(
 
 const client = new Client(
   { name: "test-client", version: "1.0.0" },
-  { transport }
+   transport
 );
 
 await client.connect();
