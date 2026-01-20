@@ -22,6 +22,9 @@ mcp.tool("ping", {}, async () => ({
 createServer(async (req, res) => {
   const url = new URL(
     req.url || "/",
+    `http://${req.headers.host || "localhost"}`
+  );
+
   console.log("➡️", req.method, url.pathname);
 
   /* ---------- HEALTH ---------- */
@@ -85,5 +88,5 @@ createServer(async (req, res) => {
   res.writeHead(405, { "Content-Type": "text/plain" });
   res.end("Method Not Allowed");
 }).listen(PORT, "0.0.0.0", () => {
-  console.log('🚀 MCP server running at http://0.0.0.0:${PORT}/mcp');
+  console.log(`🚀 MCP server running at http://0.0.0.0:${PORT}/mcp`);
 });
