@@ -32,11 +32,11 @@ createServer(async (req, res) => {
   }
 
   // ✅ GET probe / health check
-  if (req.method === "GET") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("MCP OK");
-    return;
-  }
+  // if (req.method === "GET") {
+  //   res.writeHead(200, { "Content-Type": "text/plain" });
+  //   res.end("MCP OK");
+  //   return;
+  // }
 
   // ✅ POST = MCP
   if (req.method === "POST") {
