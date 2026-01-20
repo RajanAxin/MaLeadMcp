@@ -7,33 +7,43 @@ const mcp = new McpServer({
   version: "1.0.0",
 });
 
+// Tool
 mcp.tool("ping", {}, async () => ({
   content: [{ type: "text", text: "pong" }],
 }));
 
 createServer((req, res) => {
-  // MUST be exactly /mcp
+  // Only /mcp
   if (req.url !== "/mcp") {
     res.writeHead(404);
     res.end("Not Found");
     return;
   }
 
-  if (req.method !== "POST") {
-    res.writeHead(405);
-    res.end("Method Not Allowed");
+  // ✅ Allow GET (scanner probe)
+  if (req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("MCP server is running");
     return;
   }
 
-  const transport = new StreamableHTTPServerTransport({ req, res });
+  // ✅ Allow POST (actual MCP calls)
+  if (req.method === "POST") {
+    const transport = new StreamableHTTPServerTransport({ req, res });
 
-  transport.handleRequest(mcp).catch((err) => {
-    console.error("MCP HTTP error:", err);
-    if (!res.headersSent) {
-      res.writeHead(500);
-      res.end("Internal Server Error");
-    }
-  });
+    transport.handleRequest(mcp).catch((err) => {
+      console.error("MCP HTTP error:", err);
+      if (!res.headersSent) {
+        res.writeHead(500);
+        res.end("Internal Server Error");
+      }
+    });
+    return;
+  }
+
+  // ❌ Everything else
+  res.writeHead(405);
+  res.end("Method Not Allowed");
 }).listen(2000, "0.0.0.0", () => {
-  console.log("🚀 MCP HTTP server listening on http://localhost:2000/mcp");
+  console.log("🚀 MCP HTTP server running on http://localhost:2000/mcp");
 });
