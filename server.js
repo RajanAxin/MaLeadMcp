@@ -1,63 +1,42 @@
-import { createServer } from "http";
+import http from "http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from
-  "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StreamableHTTPServerTransport }
+  from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
-const PORT = 2000;
-console.log("StreamableHTTPServerTransport =", StreamableHTTPServerTransport);
-/* -----------------------------------
-   MCP Server
------------------------------------ */
 const mcp = new McpServer({
-  name: "leaddial-mcp",
+  name: "leaddial-mcp-server",
   version: "1.0.0",
 });
 
-/* Required tool */
+/* Tool */
 mcp.tool("ping", {}, async () => ({
   content: [{ type: "text", text: "pong" }],
 }));
 
-/* -----------------------------------
-   HTTP Server
------------------------------------ */
-createServer(async (req, res) => {
-  console.log("➡️", req.method, req.url);
-
-  // ❌ Only allow /mcp or /mcp/
-  if (req.url !== "/mcp" && req.url !== "/mcp/") {
+const server = http.createServer(async (req, res) => {
+  // 🚨 DO NOT restrict to GET
+  if (!req.url?.startsWith("/mcp")) {
     res.writeHead(404);
-    res.end("Not Found");
+    res.end();
     return;
   }
 
-  // ✅ GET probe / health check
-  if (req.method === "GET") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("MCP OK");
-    return;
-  }
+  try {
+    const transport = new StreamableHTTPServerTransport({
+      req,
+      res,
+    });
 
-  // ✅ POST = MCP
-  if (req.method === "POST") {
-    try {
-      const transport = new StreamableHTTPServerTransport({ req, res });
-      await mcp.connect(transport); // ✅ CORRECT
-      return;
-    } catch (err) {
-      console.error("❌ MCP ERROR:", err);
-      if (!res.headersSent) {
-        res.writeHead(500);
-        res.end("Internal Server Error");
-      }
-      return;
+    await mcp.connect(transport);
+  } catch (err) {
+    console.error("MCP error:", err);
+    if (!res.headersSent) {
+      res.writeHead(500);
+      res.end();
     }
   }
+});
 
-  // ❌ Everything else
-  res.writeHead(405);
-  res.end("Method Not Allowed");
-
-}).listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 MCP HTTP server running on http://localhost:${PORT}/mcp`);
+server.listen(2000, () => {
+  console.log("MCP HTTP server running");
 });
