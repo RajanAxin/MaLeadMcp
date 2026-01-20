@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from
   "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 const PORT = 2000;
-
+console.log("StreamableHTTPServerTransport =", StreamableHTTPServerTransport);
 /* -----------------------------------
    MCP Server
 ----------------------------------- */
