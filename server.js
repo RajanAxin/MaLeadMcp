@@ -55,6 +55,61 @@ app.post('/mcp', (req, res) => {
               },
               required: ['text']
             }
+          },
+          {
+            name: 'local_move',
+            description: 'Get help with a local moving request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
+          },
+          {
+            name: 'long_move',
+            description: 'Get help with a long distance moving request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
+          },
+          {
+            name: 'moving_container',
+            description: 'Get help with a lmoving container request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
+          },
+          {
+            name: 'truck_rental',
+            description: 'Get help with a truck rental request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
+          },
+          {
+            name: 'last_minute_move',
+            description: 'Get help with a last minute move request',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
           }
         ]
       }
@@ -70,6 +125,7 @@ app.post('/mcp', (req, res) => {
       message: 'Method not found'
     }
   });
+
 });
 
 
