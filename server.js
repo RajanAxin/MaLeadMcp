@@ -12,10 +12,11 @@ app.use((req, res, next) => {
 });
 
 app.post('/mcp', (req, res) => {
-  const { method, id } = req.body;
+  const body = req.body ?? {};
+  const { method, id } = body;
 
   if (method === 'tools/list') {
-    res.json({
+    return res.json({
       jsonrpc: '2.0',
       id,
       result: {
@@ -34,10 +35,19 @@ app.post('/mcp', (req, res) => {
         ]
       }
     });
-  } else {
-    res.status(400).json({ error: 'Unknown method' });
   }
+
+  // MCP expects JSON-RPC error, NOT HTTP error
+  return res.json({
+    jsonrpc: '2.0',
+    id: id ?? null,
+    error: {
+      code: -32601,
+      message: 'Method not found'
+    }
+  });
 });
+
 
 app.listen(2000, () => {
   console.log('MCP server running on http://localhost:2000');
