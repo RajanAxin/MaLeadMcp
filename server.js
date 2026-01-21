@@ -1,69 +1,109 @@
-import { createServer } from "http";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import http from "http";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js"; // CHANGED: Use core Server class
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
-const PORT = 2000;
+/* ----------------------------------
+   Create MCP Server (Using Core Class)
+---------------------------------- */
+// We use 'Server' directly here instead of 'McpServer' for maximum compatibility
+const server = new Server(
+  {
+    name: "advanced-http-mcp",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
 
-/* ----------------------------- MCP Server ----------------------------- */
-const mcp = new McpServer({
-  name: "leaddial-mcp",
-  version: "1.0.0",
+/* ----------------------------------
+   Tool Definition
+---------------------------------- */
+
+// 1. Handle "List Tools" requests
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: "ping",
+        description: "Responds with a pong message",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "The message to bounce back",
+            },
+          },
+          required: ["message"],
+        },
+      },
+    ],
+  };
 });
 
-mcp.tool("ping", {}, async () => ({
-  content: [{ type: "text", text: "pong" }],
-}));
+// 2. Handle "Call Tool" requests
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
 
-/* ----------------------------- HTTP Server ----------------------------- */
-createServer(async (req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  console.log("➡️", req.method, url.pathname);
+  if (name === "ping") {
+    const message = args?.message || "no message";
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `pong: ${message}`,
+        },
+      ],
+    };
+  }
 
-  /* ---------- HEALTH ---------- */
-  if (url.pathname === "/health") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("OK");
+  throw new Error(`Unknown tool: ${name}`);
+});
+
+/* ----------------------------------
+   HTTP Server Setup
+---------------------------------- */
+const httpServer = http.createServer(async (req, res) => {
+  // Enable CORS for testing
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  
+  if (req.method === "OPTIONS") {
+    res.writeHead(200);
+    res.end();
     return;
   }
 
-  /* ---------- ROUTE GUARD ---------- */
-  if (url.pathname !== "/mcp" && url.pathname !== "/mcp/") {
-    res.writeHead(404, { "Content-Type": "text/plain" });
+  if (!req.url?.startsWith("/mcp")) {
+    res.writeHead(404);
     res.end("Not Found");
     return;
   }
 
-  /* ---------- GET (DO NOT STREAM) ---------- */
-  if (req.method === "GET") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("MCP endpoint alive. Use POST for MCP calls.");
-    return;
-  }
+  try {
+    // Create the transport for THIS specific request
+    // Note: The path string helps the transport verify routing
+    const transport = new StreamableHTTPServerTransport("/mcp", req, res);
 
-  /* ---------- POST (MCP ONLY) ---------- */
-  if (req.method === "POST") {
-    try {
-      const transport = new StreamableHTTPServerTransport({ req, res });
-      
-      // Connect the transport
-      await mcp.connect(transport);
-      
-      // The StreamableHTTPServerTransport handles the response automatically
-      // It will close when the request body is fully processed
-      
-    } catch (err) {
-      console.error("❌ MCP ERROR:", err);
-      if (!res.headersSent) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Internal MCP Error" }));
-      }
+    // Connect the MCP server logic to the HTTP transport
+    await server.connect(transport);
+    
+    // Important: Do not call res.end() here. The transport handles the response.
+  } catch (err) {
+    console.error("MCP Error:", err);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("Internal Server Error");
     }
-    return;
   }
+});
 
-  /* ---------- EVERYTHING ELSE ---------- */
-  res.writeHead(405, { "Content-Type": "text/plain" });
-  res.end("Method Not Allowed");
-}).listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 MCP server running at http://0.0.0.0:${PORT}/mcp`);
+const PORT = 2000;
+httpServer.listen(PORT, () => {
+  console.log(`✅ MCP Server running on http://localhost:${PORT}/mcp`);
 });
