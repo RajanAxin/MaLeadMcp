@@ -13,50 +13,65 @@ app.get('/mcp', (req, res) => {
   });
 });
 
-/* MCP endpoint */
 app.post('/mcp', (req, res) => {
   const body = req.body ?? {};
-  const { method, id } = body;
+  const { method, id, params } = body;
 
-  // Tool discovery (MOST IMPORTANT)
-  if (method === 'tools/list') {
-    return res
-      .status(200)
-      .type('application/json')
-      .json({
-        jsonrpc: '2.0',
-        id,
-        result: {
-          tools: [
-            {
-              name: 'example_tool',
-              description: 'An example tool',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  text: { type: 'string' }
-                },
-                required: ['text']
-              }
-            }
-          ]
-        }
-      });
-  }
-
-  // Required MCP fallback
-  return res
-    .status(200)
-    .type('application/json')
-    .json({
+  /* 1️⃣ INITIALIZE (MANDATORY) */
+  if (method === 'initialize') {
+    return res.json({
       jsonrpc: '2.0',
-      id: id ?? null,
-      error: {
-        code: -32601,
-        message: 'Method not found'
+      id,
+      result: {
+        protocolVersion: params?.protocolVersion ?? '2024-11-05',
+        capabilities: {
+          tools: {
+            list: true,
+            call: false
+          }
+        },
+        serverInfo: {
+          name: 'MaLead MCP Server',
+          version: '1.0.0'
+        }
       }
     });
+  }
+
+  /* 2️⃣ TOOLS LIST */
+  if (method === 'tools/list') {
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      result: {
+        tools: [
+          {
+            name: 'example_tool',
+            description: 'An example tool',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: { type: 'string' }
+              },
+              required: ['text']
+            }
+          }
+        ]
+      }
+    });
+  }
+
+  /* 3️⃣ FALLBACK (NEVER 4xx) */
+  return res.json({
+    jsonrpc: '2.0',
+    id: id ?? null,
+    error: {
+      code: -32601,
+      message: 'Method not found'
+    }
+  });
 });
+
 
 app.listen(2000, () => {
   console.log('✅ MCP server running on port 2000');
