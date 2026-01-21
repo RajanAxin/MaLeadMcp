@@ -1,18 +1,89 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { createServer } from "http";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
-const transport = new StreamableHTTPClientTransport(
-  new URL("https://developer.leaddial.co/mcp")
-);
+const PORT = 2000;
 
-const client = new Client(
-  { name: "test-client", version: "1.0.0" },
-   transport
-);
+/* -----------------------------
+   MCP Server
+----------------------------- */
+const mcp = new McpServer({
+  name: "leaddial-mcp",
+  version: "1.0.0",
+});
 
-await client.connect();
+mcp.tool("ping", {}, async () => ({
+  content: [{ type: "text", text: "pong" }],
+}));
 
-const tools = await client.listTools();
-console.log(tools);
+/* -----------------------------
+   HTTP Server
+----------------------------- */
 
-await client.close();
+createServer(async (req, res) => {
+  const url = new URL(
+    req.url || "/",
+    `http://${req.headers.host || "localhost"}`
+  );
+
+  /* ---------- HEALTH ---------- */
+  if (url.pathname === "/health") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("OK");
+    return;
+  }
+
+  /* ---------- ROUTE GUARD ---------- */
+  if (url.pathname !== "/mcp" && url.pathname !== "/mcp/") {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
+    return;
+  }
+
+  /* ---------- GET (DO NOT STREAM) ---------- */
+  if (req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("MCP endpoint alive. Use POST for MCP calls.");
+    return;
+  }
+
+  /* ---------- POST (MCP ONLY) ---------- */
+  if (req.method === "POST") {
+    let handled = false;
+
+    // Hard safety timeout (prevents curl hang forever)
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        console.error("❌ MCP TIMEOUT");
+        res.writeHead(504, { "Content-Type": "text/plain" });
+        res.end("MCP timeout");
+      }
+    }, 4000);
+
+    try {
+      const transport = new StreamableHTTPServerTransport({ req, res });
+      await mcp.connect(transport);
+      handled = true;
+    } catch (err) {
+      console.error("❌ MCP ERROR:", err);
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Internal MCP Error");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (!handled && !res.headersSent) {
+        res.writeHead(500);
+        res.end("Unhandled MCP request");
+      }
+    }
+    return;
+  }
+
+  /* ---------- EVERYTHING ELSE ---------- */
+  res.writeHead(405, { "Content-Type": "text/plain" });
+  res.end("Method Not Allowed");
+
+}).listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 MCP server running at http://0.0.0.0:${PORT}/mcp`);
+});
