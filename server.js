@@ -1,18 +1,15 @@
-import express from 'express';
-import fetch from 'node-fetch';
-import * as cheerio from 'cheerio';
+const express = require('express');
+const fetch = require('node-fetch'); // v2
+const cheerio = require('cheerio');
 
 const app = express();
 
 /* MUST be first */
 app.use(express.json({ limit: '1mb' }));
 
-/* Health / capability probe */
+/* Health probe */
 app.get('/mcp', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    protocol: 'mcp'
-  });
+  res.json({ status: 'ok', protocol: 'mcp' });
 });
 
 /* Helper: fetch & clean website content */
@@ -27,29 +24,21 @@ async function fetchWebsiteText(url) {
   const html = await response.text();
   const $ = cheerio.load(html);
 
-  // Remove noise
   $('script, style, nav, footer, header, noscript').remove();
 
   let text = '';
-
   $('h1, h2, h3, p, li').each((_, el) => {
     const t = $(el).text().trim();
-    if (t.length > 25) {
-      text += t + '\n';
-    }
+    if (t.length > 25) text += t + '\n';
   });
 
   return text.trim();
 }
 
-
 app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
 
-  const body = req.body ?? {};
-  const method = body.method;
-  const id = body.id ?? null;
-  const params = body.params ?? {};
+  const { method, id = null, params = {} } = req.body || {};
 
   /* 1️⃣ INITIALIZE */
   if (method === 'initialize') {
@@ -59,10 +48,7 @@ app.post('/mcp', async (req, res) => {
       result: {
         protocolVersion: '2024-11-05',
         capabilities: {
-          tools: {
-            list: true,
-            call: true
-          }
+          tools: { list: true, call: true }
         },
         serverInfo: {
           name: 'MaLead MCP Server',
@@ -81,63 +67,41 @@ app.post('/mcp', async (req, res) => {
         tools: [
           {
             name: 'local_move',
-            description: 'Moving within the same city',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-            }
+            description: 'Information about local moving services',
+            inputSchema: { type: 'object', properties: {} }
           },
           {
             name: 'long_move',
-            description: 'Moving between different cities or states',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-            }
+            description: 'Information about long distance moving services',
+            inputSchema: { type: 'object', properties: {} }
           },
           {
             name: 'truck_rental',
-            description: 'Truck rental without movers',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-            }
+            description: 'Information about truck rental services',
+            inputSchema: { type: 'object', properties: {} }
           },
           {
             name: 'last_minute_move',
-            description: 'Urgent or same-day moving',
-           inputSchema: {
-              type: 'object',
-              properties: {},
-            }
+            description: 'Information about last minute moving services',
+            inputSchema: { type: 'object', properties: {} }
           }
         ]
       }
     });
   }
 
-  /* 3️⃣ TOOLS CALL – WEBSITE ONLY */
+  /* 3️⃣ TOOLS CALL */
   if (method === 'tools/call') {
     const toolName = params.name;
     let url = 'https://www.vanlinesmove.com/moving-services';
 
-    switch (toolName) {
-      case 'local_move':
-        url += '/local-movers';
-        break;
-      case 'long_move':
-        url += '/long-distance-movers';
-        break;
-      case 'truck_rental':
-        url += '/truck-rental';
-        break;
-      case 'last_minute_move':
-        url += '/last-minute-movers';
-        break;
-    }
+    if (toolName === 'local_move') url += '/local-movers';
+    if (toolName === 'long_move') url += '/long-distance-movers';
+    if (toolName === 'truck_rental') url += '/truck-rental';
+    if (toolName === 'last_minute_move') url += '/last-minute-movers';
 
     try {
-      const websiteText = await fetchWebsiteText(url);
+      const text = await fetchWebsiteText(url);
 
       return res.json({
         jsonrpc: '2.0',
@@ -146,7 +110,7 @@ app.post('/mcp', async (req, res) => {
           content: [
             {
               type: 'text',
-              text: `SOURCE URL:\n${url}\n\nWEBSITE CONTENT:\n${websiteText}`
+              text: `SOURCE URL:\n${url}\n\nPAGE CONTENT:\n${text}`
             }
           ]
         }
@@ -159,8 +123,7 @@ app.post('/mcp', async (req, res) => {
           content: [
             {
               type: 'text',
-              text:
-                'Sorry, the information could not be fetched from the website.'
+              text: 'Unable to fetch content from the website.'
             }
           ]
         }
@@ -168,25 +131,16 @@ app.post('/mcp', async (req, res) => {
     }
   }
 
-  /* 4️⃣ MCP NOTIFICATIONS */
-  if (method?.startsWith('notifications/')) {
-    return res.json({
-      jsonrpc: '2.0',
-      id,
-      result: {}
-    });
+  /* Notifications */
+  if (method && method.startsWith('notifications/')) {
+    return res.json({ jsonrpc: '2.0', id, result: {} });
   }
 
-  /* 5️⃣ FALLBACK */
-  console.error('❌ MCP METHOD NOT HANDLED:', method);
-
+  /* Fallback */
   return res.json({
     jsonrpc: '2.0',
     id,
-    error: {
-      code: -32601,
-      message: `Method "${method}" not found`
-    }
+    error: { code: -32601, message: `Method "${method}" not found` }
   });
 });
 
