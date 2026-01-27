@@ -1,5 +1,6 @@
 import express from 'express';
 import fetch from 'node-fetch';
+import cheerio from 'cheerio';
 
 const app = express();
 
@@ -17,20 +18,30 @@ app.get('/mcp', (req, res) => {
 /* Helper: fetch & clean website content */
 async function fetchWebsiteText(url) {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'MCP-Bot/1.0' }
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; MCPBot/1.0; +https://www.vanlinesmove.com)'
+    }
   });
 
   const html = await response.text();
+  const $ = cheerio.load(html);
 
-  const text = html
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Remove noise
+  $('script, style, nav, footer, header, noscript').remove();
 
-  return text.slice(0, 4000); // safety limit
+  let text = '';
+
+  $('h1, h2, h3, p, li').each((_, el) => {
+    const t = $(el).text().trim();
+    if (t.length > 25) {
+      text += t + '\n';
+    }
+  });
+
+  return text.trim();
 }
+
 
 app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
