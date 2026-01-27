@@ -1,4 +1,5 @@
 import express from 'express';
+import fetch from 'node-fetch';
 
 const app = express();
 
@@ -13,7 +14,25 @@ app.get('/mcp', (req, res) => {
   });
 });
 
-app.post('/mcp', (req, res) => {
+/* Helper: fetch & clean website content */
+async function fetchWebsiteText(url) {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'MCP-Bot/1.0' }
+  });
+
+  const html = await response.text();
+
+  const text = html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return text.slice(0, 4000); // safety limit
+}
+
+app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
 
   const body = req.body ?? {};
@@ -21,7 +40,7 @@ app.post('/mcp', (req, res) => {
   const id = body.id ?? null;
   const params = body.params ?? {};
 
-  /* 1️⃣ INITIALIZE (MANDATORY) */
+  /* 1️⃣ INITIALIZE */
   if (method === 'initialize') {
     return res.json({
       jsonrpc: '2.0',
@@ -42,7 +61,7 @@ app.post('/mcp', (req, res) => {
     });
   }
 
-  /* 2️⃣ TOOLS LIST (MANDATORY) */
+  /* 2️⃣ TOOLS LIST */
   if (method === 'tools/list') {
     return res.json({
       jsonrpc: '2.0',
@@ -51,67 +70,46 @@ app.post('/mcp', (req, res) => {
         tools: [
           {
             name: 'local_move',
-            description:
-              'Use ONLY when the user is moving within the SAME city or local area',
+            description: 'Moving within the same city',
             inputSchema: {
               type: 'object',
               properties: {
                 from_area: { type: 'string' },
-                to_area: { type: 'string' },
-                move_date: { type: 'string' }
+                to_area: { type: 'string' }
               },
               required: ['from_area', 'to_area']
             }
           },
           {
             name: 'long_move',
-            description:
-              'Use ONLY when the user is moving between DIFFERENT cities or states',
+            description: 'Moving between different cities or states',
             inputSchema: {
               type: 'object',
               properties: {
                 from_city: { type: 'string' },
-                to_city: { type: 'string' },
-                move_date: { type: 'string' }
+                to_city: { type: 'string' }
               },
               required: ['from_city', 'to_city']
             }
           },
           {
             name: 'truck_rental',
-            description:
-              'Use ONLY when the user wants to RENT a truck without movers',
+            description: 'Truck rental without movers',
             inputSchema: {
               type: 'object',
               properties: {
-                city: { type: 'string' },
-                truck_size: { type: 'string' }
-              },
-              required: ['city']
-            }
-          },
-          {
-            name: 'moving_container',
-            description:
-              'Use ONLY for container-based or partial-load moving',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                city: { type: 'string' },
-                container_type: { type: 'string' }
+                city: { type: 'string' }
               },
               required: ['city']
             }
           },
           {
             name: 'last_minute_move',
-            description:
-              'Use ONLY for urgent or same-day / next-day moving',
+            description: 'Urgent or same-day moving',
             inputSchema: {
               type: 'object',
               properties: {
-                city: { type: 'string' },
-                urgency: { type: 'string' }
+                city: { type: 'string' }
               },
               required: ['city']
             }
@@ -121,24 +119,59 @@ app.post('/mcp', (req, res) => {
     });
   }
 
-  /* 3️⃣ TOOLS CALL (MANDATORY) */
+  /* 3️⃣ TOOLS CALL – WEBSITE ONLY */
   if (method === 'tools/call') {
     const toolName = params.name;
-    const args = params.arguments ?? {};
+    let url = 'https://www.vanlinesmove.com/moving-services';
 
-    return res.json({
-      jsonrpc: '2.0',
-      id,
-      result: {
-        tool: toolName,
-        source: 'website',
-        received_arguments: args,
-        message: `Tool "${toolName}" executed successfully`
-      }
-    });
+    switch (toolName) {
+      case 'local_move':
+        url += '/local-movers';
+        break;
+      case 'long_move':
+        url += '/long-distance-movers';
+        break;
+      case 'truck_rental':
+        url += '/truck-rental';
+        break;
+      case 'last_minute_move':
+        url += '/last-minute-movers';
+        break;
+    }
+
+    try {
+      const websiteText = await fetchWebsiteText(url);
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: `SOURCE URL:\n${url}\n\nWEBSITE CONTENT:\n${websiteText}`
+            }
+          ]
+        }
+      });
+    } catch (err) {
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text:
+                'Sorry, the information could not be fetched from the website.'
+            }
+          ]
+        }
+      });
+    }
   }
 
-  /* 4️⃣ MCP NOTIFICATIONS (MANDATORY) */
+  /* 4️⃣ MCP NOTIFICATIONS */
   if (method?.startsWith('notifications/')) {
     return res.json({
       jsonrpc: '2.0',
@@ -147,7 +180,7 @@ app.post('/mcp', (req, res) => {
     });
   }
 
-  /* 5️⃣ SAFE FALLBACK */
+  /* 5️⃣ FALLBACK */
   console.error('❌ MCP METHOD NOT HANDLED:', method);
 
   return res.json({
