@@ -50,74 +50,96 @@ app.post('/mcp', (req, res) => {
         tools: [
           {
             name: 'example_tool',
-            description: 'An example tool',
+            description: 'Use ONLY for testing or demo purposes',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                note: { type: 'string', description: 'Any test message' }
               },
-              required: ['text']
+              required: ['note']
             }
           },
           {
             name: 'local_move',
-            description: 'Get help with a local moving request',
+            description:
+              'Use ONLY when the user is moving within the SAME city or local area',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                from_area: { type: 'string', description: 'Current locality' },
+                to_area: { type: 'string', description: 'New locality' },
+                move_date: { type: 'string', description: 'Preferred move date' }
               },
-              required: ['text']
+              required: ['from_area', 'to_area']
             }
           },
           {
             name: 'long_move',
-            description: 'Get help with a long distance moving request',
+            description:
+              'Use ONLY when the user is moving between DIFFERENT cities or states',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                from_city: { type: 'string', description: 'Source city' },
+                to_city: { type: 'string', description: 'Destination city' },
+                move_date: { type: 'string', description: 'Preferred move date' }
               },
-              required: ['text']
+              required: ['from_city', 'to_city']
             }
           },
           {
             name: 'moving_container',
-            description: 'Get help with a lmoving container request',
+            description:
+              'Use ONLY when the user asks for container-based or partial-load moving',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                city: { type: 'string', description: 'City of service' },
+                container_type: {
+                  type: 'string',
+                  description: 'Small, medium, or shared container'
+                }
               },
-              required: ['text']
+              required: ['city']
             }
           },
           {
             name: 'truck_rental',
-            description: 'Get help with a truck rental request',
+            description:
+              'Use ONLY when the user wants to RENT a truck WITHOUT movers or packing',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                city: { type: 'string', description: 'City for truck rental' },
+                truck_size: {
+                  type: 'string',
+                  description: 'Mini, medium, or large truck'
+                }
               },
-              required: ['text']
+              required: ['city']
             }
           },
           {
             name: 'last_minute_move',
-            description: 'Get help with a last minute move request',
+            description:
+              'Use ONLY when the user mentions URGENT or SAME-DAY / NEXT-DAY moving',
             inputSchema: {
               type: 'object',
               properties: {
-                text: { type: 'string' }
+                city: { type: 'string', description: 'City of move' },
+                urgency: {
+                  type: 'string',
+                  description: 'Immediate, today, or tomorrow'
+                }
               },
-              required: ['text']
+              required: ['city']
             }
           }
         ]
       }
     });
   }
+
 
   /* 3️⃣ FALLBACK (NEVER 4xx) */
   return res.json({
