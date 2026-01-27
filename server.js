@@ -42,103 +42,102 @@ app.post('/mcp', (req, res) => {
   }
 
   /* 2️⃣ TOOLS LIST */
-  if (method === 'tools/list') {
+ 
+  if (method === 'tools/call') {
+    const { name, arguments: args } = params;
+
+  /* LONG MOVE */
+    if (name === 'long_move') {
+      const { from_city, to_city, move_date } = args;
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          service: 'long_move',
+          source: 'website',
+          from_city,
+          to_city,
+          move_date,
+          message:
+            'Long distance moving service information fetched from MaLead website'
+        }
+      });
+    }
+
+    /* LOCAL MOVE */
+    if (name === 'local_move') {
+      const { from_area, to_area, move_date } = args;
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          service: 'local_move',
+          source: 'website',
+          from_area,
+          to_area,
+          move_date
+        }
+      });
+    }
+
+    /* TRUCK RENTAL */
+    if (name === 'truck_rental') {
+      const { city, truck_size } = args;
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          service: 'truck_rental',
+          city,
+          truck_size
+        }
+      });
+    }
+
+    /* MOVING CONTAINER */
+    if (name === 'moving_container') {
+      const { city, container_type } = args;
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          service: 'moving_container',
+          city,
+          container_type
+        }
+      });
+    }
+
+    /* LAST MINUTE MOVE */
+    if (name === 'last_minute_move') {
+      const { city, urgency } = args;
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          service: 'last_minute_move',
+          city,
+          urgency
+        }
+      });
+    }
+
+    /* UNKNOWN TOOL */
     return res.json({
       jsonrpc: '2.0',
       id,
-      result: {
-        tools: [
-          {
-            name: 'example_tool',
-            description: 'Use ONLY for testing or demo purposes',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                note: { type: 'string', description: 'Any test message' }
-              },
-              required: ['note']
-            }
-          },
-          {
-            name: 'local_move',
-            description:
-              'Use ONLY when the user is moving within the SAME city or local area',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                from_area: { type: 'string', description: 'Current locality' },
-                to_area: { type: 'string', description: 'New locality' },
-                move_date: { type: 'string', description: 'Preferred move date' }
-              },
-              required: ['from_area', 'to_area']
-            }
-          },
-          {
-            name: 'long_move',
-            description:
-              'Use ONLY when the user is moving between DIFFERENT cities or states',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                from_city: { type: 'string', description: 'Source city' },
-                to_city: { type: 'string', description: 'Destination city' },
-                move_date: { type: 'string', description: 'Preferred move date' }
-              },
-              required: ['from_city', 'to_city']
-            }
-          },
-          {
-            name: 'moving_container',
-            description:
-              'Use ONLY when the user asks for container-based or partial-load moving',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                city: { type: 'string', description: 'City of service' },
-                container_type: {
-                  type: 'string',
-                  description: 'Small, medium, or shared container'
-                }
-              },
-              required: ['city']
-            }
-          },
-          {
-            name: 'truck_rental',
-            description:
-              'Use ONLY when the user wants to RENT a truck WITHOUT movers or packing',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                city: { type: 'string', description: 'City for truck rental' },
-                truck_size: {
-                  type: 'string',
-                  description: 'Mini, medium, or large truck'
-                }
-              },
-              required: ['city']
-            }
-          },
-          {
-            name: 'last_minute_move',
-            description:
-              'Use ONLY when the user mentions URGENT or SAME-DAY / NEXT-DAY moving',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                city: { type: 'string', description: 'City of move' },
-                urgency: {
-                  type: 'string',
-                  description: 'Immediate, today, or tomorrow'
-                }
-              },
-              required: ['city']
-            }
-          }
-        ]
+      error: {
+        code: -32601,
+        message: `Tool "${name}" not implemented`
       }
     });
   }
+
 
 
   /* 3️⃣ FALLBACK (NEVER 4xx) */
