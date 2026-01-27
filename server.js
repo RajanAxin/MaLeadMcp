@@ -73,7 +73,11 @@ app.post('/mcp', async (req, res) => {
             description: 'Moving within the same city',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                from_area: { type: 'string' },
+                to_area: { type: 'string' }
+              },
+              required: ['from_area', 'to_area']
             }
           },
           {
@@ -81,7 +85,11 @@ app.post('/mcp', async (req, res) => {
             description: 'Moving between different cities or states',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                from_city: { type: 'string' },
+                to_city: { type: 'string' }
+              },
+              required: ['from_city', 'to_city']
             }
           },
           {
@@ -89,15 +97,21 @@ app.post('/mcp', async (req, res) => {
             description: 'Truck rental without movers',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                city: { type: 'string' }
+              },
+              required: ['city']
             }
           },
           {
             name: 'last_minute_move',
             description: 'Urgent or same-day moving',
-           inputSchema: {
+            inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                city: { type: 'string' }
+              },
+              required: ['city']
             }
           }
         ]
