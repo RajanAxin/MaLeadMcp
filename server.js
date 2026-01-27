@@ -24,16 +24,33 @@ async function fetchWebsiteText(url) {
   const html = await response.text();
   const $ = cheerio.load(html);
 
-  $('script, style, nav, footer, header, noscript').remove();
+  // Remove noise
+  $('script, style, nav, footer, header, noscript, svg, iframe').remove();
 
+  const contentSelectors = `
+    h1, h2, h3, h4, h5, h6,
+    p, li,
+    article, section, main,
+    div, span,
+    strong, em, b, i,
+    figcaption, blockquote
+  `;
+
+  let seen = new Set();
   let text = '';
-  $('h1, h2, h3, p, li').each((_, el) => {
-    const t = $(el).text().trim();
-    if (t.length > 25) text += t + '\n';
+
+  $(contentSelectors).each((_, el) => {
+    const t = $(el).text().replace(/\s+/g, ' ').trim();
+
+    if (t.length > 30 && t.length < 1000 && !seen.has(t)) {
+      seen.add(t);
+      text += t + '\n';
+    }
   });
 
   return text.trim();
 }
+
 
 app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
