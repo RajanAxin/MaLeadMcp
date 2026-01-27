@@ -27,7 +27,7 @@ app.post('/mcp', (req, res) => {
         capabilities: {
           tools: {
             list: true,
-            call: false
+            call: true
           }
         },
         serverInfo: {
@@ -39,82 +39,106 @@ app.post('/mcp', (req, res) => {
   }
 
   /* 2️⃣ TOOLS LIST */
-  if (method === 'tools/list') {
-    return res.json({
-      jsonrpc: '2.0',
-      id,
-      result: {
-        tools: [
-          {
-            name: 'example_tool',
-            description: 'An example tool',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          },
-          {
-            name: 'local_move',
-            description: 'Get help with a local moving request',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          },
-          {
-            name: 'long_move',
-            description: 'Get help with a long distance moving request',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          },
-          {
-            name: 'moving_container',
-            description: 'Get help with a lmoving container request',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          },
-          {
-            name: 'truck_rental',
-            description: 'Get help with a truck rental request',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          },
-          {
-            name: 'last_minute_move',
-            description: 'Get help with a last minute move request',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' }
-              },
-              required: ['text']
-            }
-          }
-        ]
-      }
+if (method === 'tools/call') {
+  const { name, arguments: args } = params;
+  const userText = args?.text ?? '';
+
+  // helper: common response format
+  const respond = (data) => res.json({
+    jsonrpc: '2.0',
+    id,
+    result: {
+      source: 'website',
+      tool: name,
+      query: userText,
+      data
+    }
+  });
+
+  if (name === 'example_tool') {
+    return respond({
+      message: 'Example tool executed',
+      note: userText
     });
   }
+
+  if (name === 'local_move') {
+    return respond({
+      title: 'Local Moving Services',
+      description:
+        'Local moving services include house shifting within the same city, packing, loading, transportation, unloading, and unpacking.',
+      nextSteps: [
+        'Confirm from & to locality',
+        'Select moving date',
+        'Choose house size',
+        'Decide packing requirements'
+      ]
+    });
+  }
+
+  if (name === 'long_move') {
+    return respond({
+      title: 'Long Distance Moving',
+      description:
+        'Long distance moving services cover intercity or interstate relocation with secure packing and insured transport.',
+      nextSteps: [
+        'Confirm source & destination city',
+        'Check transit time',
+        'Understand insurance coverage'
+      ]
+    });
+  }
+
+  if (name === 'moving_container') {
+    return respond({
+      title: 'Moving Container Services',
+      description:
+        'Container moving is suitable for partial loads or flexible timelines with cost-effective shared containers.',
+      idealFor: [
+        'Small households',
+        'Flexible delivery timelines',
+        'Budget-friendly moves'
+      ]
+    });
+  }
+
+  if (name === 'truck_rental') {
+    return respond({
+      title: 'Truck Rental',
+      description:
+        'Truck rental services allow customers to rent vehicles with or without drivers for self-managed moves.',
+      options: [
+        'Mini truck',
+        'Medium truck',
+        'Large container truck'
+      ]
+    });
+  }
+
+  if (name === 'last_minute_move') {
+    return respond({
+      title: 'Last Minute Moving',
+      description:
+        'Last-minute moving services are designed for urgent relocations with quick packing and dispatch.',
+      tips: [
+        'Keep essentials ready',
+        'Confirm availability immediately',
+        'Opt for professional packing'
+      ]
+    });
+  }
+
+  // if tool name does not match
+  return res.json({
+    jsonrpc: '2.0',
+    id,
+    error: {
+      code: -32601,
+      message: `Tool "${name}" not implemented`
+    }
+  });
+}
+
 
   /* 3️⃣ FALLBACK (NEVER 4xx) */
   return res.json({
