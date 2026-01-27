@@ -24,6 +24,29 @@ async function fetchWebsiteText(url) {
   const html = await response.text();
   const $ = cheerio.load(html);
 
+  $('script, style, nav, footer, header, noscript').remove();
+
+  let text = '';
+  $('h1, h2, h3, p, li').each((_, el) => {
+    const t = $(el).text().trim();
+    if (t.length > 25) text += t + '\n';
+  });
+
+  return text.trim();
+}
+
+
+async function fetchLatestWebsiteText(url) {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (compatible; MCPBot/1.0; +https://www.vanlinesmove.com)'
+    }
+  });
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+
   // Remove noise
   $('script, style, nav, footer, header, noscript, svg, iframe').remove();
 
@@ -50,7 +73,6 @@ async function fetchWebsiteText(url) {
 
   return text.trim();
 }
-
 
 app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
