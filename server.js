@@ -17,6 +17,7 @@ app.get('/mcp', (req, res) => {
 
 
 app.post('/mcp', (req, res) => {
+  console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
   const body = req.body ?? {};
   const { method, id, params } = body;
 
@@ -121,6 +122,22 @@ if (method === 'tools/list') {
   });
 }
 
+
+/* 3️⃣ TOOLS CALL (MANDATORY) */
+if (method === 'tools/call') {
+  const name = params?.name;
+  const args = params?.arguments ?? {};
+
+  return res.json({
+    jsonrpc: '2.0',
+    id,
+    result: {
+      tool: name,
+      received_arguments: args,
+      message: 'Tool call received successfully'
+    }
+  });
+}
 
 
 
