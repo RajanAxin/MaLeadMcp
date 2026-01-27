@@ -70,19 +70,35 @@ app.post('/mcp', async (req, res) => {
         tools: [
           {
             name: 'local_move',
-            description: 'Moving within the same city'
+            description: 'Moving within the same city',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            }
           },
           {
             name: 'long_move',
-            description: 'Moving between different cities or states'
+            description: 'Moving between different cities or states',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            }
           },
           {
             name: 'truck_rental',
-            description: 'Truck rental without movers'
+            description: 'Truck rental without movers',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            }
           },
           {
             name: 'last_minute_move',
-            description: 'Urgent or same-day moving'
+            description: 'Urgent or same-day moving',
+           inputSchema: {
+              type: 'object',
+              properties: {},
+            }
           }
         ]
       }
