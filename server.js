@@ -53,7 +53,6 @@ app.post('/mcp', async (req, res) => {
           { name: 'local_move', description: 'Local house shifting service' },
           { name: 'long_move', description: 'Intercity house shifting service' },
           { name: 'truck_rental', description: 'Truck or tempo rental service' },
-          { name: 'moving_container', description: 'Container based moving' },
           { name: 'last_minute_move', description: 'Urgent or last minute move' }
         ]
       }
@@ -66,11 +65,10 @@ app.post('/mcp', async (req, res) => {
 
     let url = 'https://www.vanlinesmove.com/moving-services';
 
-    if (tool === 'local_move') url += '/local-move';
-    if (tool === 'long_move') url += '/long-distance-move';
+    if (tool === 'local_move') url += '/local-movers';
+    if (tool === 'long_move') url += '/long-distance-movers';
     if (tool === 'truck_rental') url += '/truck-rental';
-    if (tool === 'moving_container') url += '/container-moving';
-    if (tool === 'last_minute_move') url += '/last-minute-move';
+    if (tool === 'last_minute_move') url += '/last-minute-movers';
 
     const content = await fetchWebsiteText(url);
 
