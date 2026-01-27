@@ -6,29 +6,39 @@ const app = express();
 /* MUST be first */
 app.use(express.json({ limit: '1mb' }));
 
-/* Health check */
+/* Health / capability probe */
 app.get('/mcp', (req, res) => {
-  res.json({ status: 'ok', protocol: 'mcp' });
+  res.status(200).json({
+    status: 'ok',
+    protocol: 'mcp'
+  });
 });
 
-/* Fetch website content */
+/* Helper: fetch & clean website content */
 async function fetchWebsiteText(url) {
-  const res = await fetch(url, {
+  const response = await fetch(url, {
     headers: { 'User-Agent': 'MCP-Bot/1.0' }
   });
-  const html = await res.text();
 
-  return html
+  const html = await response.text();
+
+  const text = html
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 4000);
+    .trim();
+
+  return text.slice(0, 4000); // safety limit
 }
 
 app.post('/mcp', async (req, res) => {
-  const { method, id, params } = req.body;
+  console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
+
+  const body = req.body ?? {};
+  const method = body.method;
+  const id = body.id ?? null;
+  const params = body.params ?? {};
 
   /* 1️⃣ INITIALIZE */
   if (method === 'initialize') {
@@ -37,68 +47,122 @@ app.post('/mcp', async (req, res) => {
       id,
       result: {
         protocolVersion: '2024-11-05',
-        capabilities: { tools: { list: true, call: true } },
-        serverInfo: { name: 'MaLead MCP Server', version: '1.0.0' }
+        capabilities: {
+          tools: {
+            list: true,
+            call: true
+          }
+        },
+        serverInfo: {
+          name: 'MaLead MCP Server',
+          version: '1.0.0'
+        }
       }
     });
   }
 
-  /* 2️⃣ TOOLS LIST (SIMPLE) */
+  /* 2️⃣ TOOLS LIST */
   if (method === 'tools/list') {
     return res.json({
       jsonrpc: '2.0',
       id,
       result: {
         tools: [
-          { name: 'local_move', description: 'Local house shifting service' },
-          { name: 'long_move', description: 'Intercity house shifting service' },
-          { name: 'truck_rental', description: 'Truck or tempo rental service' },
-          { name: 'last_minute_move', description: 'Urgent or last minute move' }
-        ]
-      }
-    });
-  }
-
-  /* 3️⃣ TOOLS CALL (MESSAGE-BASED ONLY) */
-  if (method === 'tools/call') {
-    const tool = params?.name;
-
-    let url = 'https://www.vanlinesmove.com/moving-services';
-
-    if (tool === 'local_move') url += '/local-movers';
-    if (tool === 'long_move') url += '/long-distance-movers';
-    if (tool === 'truck_rental') url += '/truck-rental';
-    if (tool === 'last_minute_move') url += '/last-minute-movers';
-
-    const content = await fetchWebsiteText(url);
-
-    return res.json({
-      jsonrpc: '2.0',
-      id,
-      result: {
-        content: [
           {
-            type: 'text',
-            text: `SOURCE: ${url}\n\n${content}`
+            name: 'local_move',
+            description: 'Moving within the same city'
+          },
+          {
+            name: 'long_move',
+            description: 'Moving between different cities or states'
+          },
+          {
+            name: 'truck_rental',
+            description: 'Truck rental without movers'
+          },
+          {
+            name: 'last_minute_move',
+            description: 'Urgent or same-day moving'
           }
         ]
       }
     });
   }
 
-  /* 4️⃣ NOTIFICATIONS */
-  if (method?.startsWith('notifications/')) {
-    return res.json({ jsonrpc: '2.0', id, result: {} });
+  /* 3️⃣ TOOLS CALL – WEBSITE ONLY */
+  if (method === 'tools/call') {
+    const toolName = params.name;
+    let url = 'https://www.vanlinesmove.com/moving-services';
+
+    switch (toolName) {
+      case 'local_move':
+        url += '/local-movers';
+        break;
+      case 'long_move':
+        url += '/long-distance-movers';
+        break;
+      case 'truck_rental':
+        url += '/truck-rental';
+        break;
+      case 'last_minute_move':
+        url += '/last-minute-movers';
+        break;
+    }
+
+    try {
+      const websiteText = await fetchWebsiteText(url);
+
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: `SOURCE URL:\n${url}\n\nWEBSITE CONTENT:\n${websiteText}`
+            }
+          ]
+        }
+      });
+    } catch (err) {
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text:
+                'Sorry, the information could not be fetched from the website.'
+            }
+          ]
+        }
+      });
+    }
   }
 
-  /* FALLBACK */
+  /* 4️⃣ MCP NOTIFICATIONS */
+  if (method?.startsWith('notifications/')) {
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      result: {}
+    });
+  }
+
+  /* 5️⃣ FALLBACK */
+  console.error('❌ MCP METHOD NOT HANDLED:', method);
+
   return res.json({
     jsonrpc: '2.0',
     id,
-    error: { code: -32601, message: 'Method not found' }
+    error: {
+      code: -32601,
+      message: `Method "${method}" not found`
+    }
   });
 });
 
-app.listen(2000, () =>
-  console.log('✅ MCP server running on port 2000')
-);
+app.listen(2000, () => {
+  console.log('✅ MCP server running on port 2000');
+});
