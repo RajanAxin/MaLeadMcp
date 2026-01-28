@@ -35,7 +35,6 @@ async function fetchWebsiteText(url) {
   return text.trim();
 }
 
-
 async function fetchLatestWebsiteText(url) {
   const response = await fetch(url, {
     headers: {
@@ -98,7 +97,7 @@ app.post('/mcp', async (req, res) => {
   }
 
   /* 2️⃣ TOOLS LIST */
-  if (method === 'tools/list') {
+   if (method === 'tools/list') {
     return res.json({
       jsonrpc: '2.0',
       id,
@@ -110,8 +109,48 @@ app.post('/mcp', async (req, res) => {
             inputSchema: { type: 'object', properties: {} }
           },
           {
+            name: 'last_minute_move',
+            description: 'Information about last minute moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'junk_removal',
+            description: 'Information about junk removal moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
             name: 'long_move',
             description: 'Information about long distance moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'piano_mover',
+            description: 'Information about piano movers moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'heavy_equipment',
+            description: 'Information about heavy equipment moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'moving_container',
+            description: 'Information about moving container moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'commercial_mover',
+            description: 'Information about commercial movers moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'car_transportation',
+            description: 'Information about car transportation moving services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'furniture_mover',
+            description: 'Information about furniture movers moving services',
             inputSchema: { type: 'object', properties: {} }
           },
           {
@@ -120,10 +159,36 @@ app.post('/mcp', async (req, res) => {
             inputSchema: { type: 'object', properties: {} }
           },
           {
-            name: 'last_minute_move',
-            description: 'Information about last minute moving services',
+            name: 'moving_cost_calculator',
+            description: 'Information about moving cost calculator services',
             inputSchema: { type: 'object', properties: {} }
-          }
+          },
+          {
+            name: 'moving_planner',
+            description: 'Information about moving planner services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'storage_service',
+            description: 'Information about storage service services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'packing_calculator',
+            description: 'Information about packing calculator services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'moving_checklist',
+            description: 'Information about moving checklist services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+          {
+            name: 'inventory_checklist',
+            description: 'Information about inventory-checklist services',
+            inputSchema: { type: 'object', properties: {} }
+          },
+
         ]
       }
     });
@@ -132,12 +197,25 @@ app.post('/mcp', async (req, res) => {
   /* 3️⃣ TOOLS CALL */
   if (method === 'tools/call') {
     const toolName = params.name;
-    let url = 'https://www.vanlinesmove.com/moving-services';
+    let url = 'https://www.vanlinesmove.com';
 
-    if (toolName === 'local_move') url += '/local-movers';
-    if (toolName === 'long_move') url += '/long-distance-movers';
-    if (toolName === 'truck_rental') url += '/truck-rental';
-    if (toolName === 'last_minute_move') url += '/last-minute-movers';
+    if (toolName === 'local_move') url += '/moving-services/local-movers';
+    if (toolName === 'last_minute_move') url += '/moving-services/last-minute-movers';
+    if (toolName === 'junk_removal') url += '/moving-services/junk-removal';
+    if (toolName === 'long_move') url += '/moving-services/long-distance-movers';
+    if (toolName === 'piano_mover') url += '/moving-services/piano-movers';
+    if (toolName === 'heavy_equipment') url += '/moving-services/heavy-equipment';
+    if (toolName === 'commercial_mover') url += '/moving-services/commercial-movers';
+    if (toolName === 'moving_container') url += '/moving-services/moving-container';
+    if (toolName === 'car_transportation') url += '/moving-services/car-transportation';
+    if (toolName === 'furniture_mover') url += '/moving-services/furniture-movers';
+    if (toolName === 'truck_rental') url += '/moving-services/truck-rental';
+    if (toolName === 'storage_service') url += '/moving-services/storage-service';
+    if (toolName === 'moving_cost_calculator') url += '/tools/moving-cost-calculator';
+    if (toolName === 'moving_planner') url += 'tools/moving-planner';
+    if (toolName === 'packing_calculator') url += '/tools/packing-calculator';
+    if (toolName === 'moving_checklist') url += '/tools/moving-checklist';
+    if (toolName === 'inventory_checklist') url += '/tools/inventory-checklist';
 
     try {
       const text = await fetchWebsiteText(url);
