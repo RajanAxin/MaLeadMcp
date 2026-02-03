@@ -64,17 +64,27 @@ app.post('/mcp', async (req, res) => {
       jsonrpc: '2.0',
       id: id,
       result: {
-        tools: [
+         tools: [
           {
             name: 'generate_mysql_query',
-            description: 'Generate and execute a MySQL query',
+            description:
+              'Generate a MySQL query in response to a user question about a specific database.',
             inputSchema: {
               type: 'object',
-              required: ['database_schema', 'user_question'],
               properties: {
-                database_schema: { type: 'string' },
-                user_question: { type: 'string' }
-              }
+                database_schema: {
+                  type: 'string',
+                  description:
+                    'Description of the MySQL database schema, including tables and columns.'
+                },
+                user_question: {
+                  type: 'string',
+                  description:
+                    'The user’s question or requirement to be translated into a MySQL query.'
+                }
+              },
+              required: ['database_schema', 'user_question'],
+              additionalProperties: false
             }
           }
         ]
