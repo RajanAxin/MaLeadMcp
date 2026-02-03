@@ -168,7 +168,7 @@ app.post("/mcp", async (req, res) => {
   }
 
   /* Notifications */
-  if (method?.startsWith("notifications/")) {
+  if (method && method.startsWith("notifications/")) {
     return res.json({ jsonrpc: "2.0", id, result: {} });
   }
 
