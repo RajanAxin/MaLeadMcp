@@ -142,6 +142,6 @@ app.post('/mcp', async (req, res) => {
   });
 });
 
-app.listen(2000, () => {
-  console.log('✅ MCP server running on port 2000');
+app.listen(4000, () => {
+  console.log('✅ MCP server running on port 4000');
 });
