@@ -1,66 +1,80 @@
 const express = require('express');
-const fetch = require('node-fetch'); // v2
+const mysql = require('mysql2/promise');
 
 const app = express();
 
 /* MUST be first */
 app.use(express.json({ limit: '1mb' }));
 
+/* 🔗 MySQL connection */
+const db = mysql.createPool({
+  host: 'mysql',
+  user: 'admin',
+  password: 'v5knfNxAXe',
+  database: 'stage_pmsnapit',
+  connectionLimit: 10
+});
+
 /* Health check */
 app.get('/mcp', (req, res) => {
   res.json({ status: 'ok', protocol: 'mcp' });
 });
 
+/* 🧠 SIMPLE SQL GENERATOR */
+function generateMysqlQuery(schema, question) {
+  const q = question.toLowerCase();
+
+  // Example: "how many leads created today"
+  if (q.indexOf('how many') !== -1 && q.indexOf('lead') !== -1) {
+    return `
+      SELECT COUNT(*) AS total_leads
+      FROM lead
+      WHERE DATE(created_at) = CURDATE()
+    `;
+  }
+
+  // fallback
+  throw new Error('Unable to generate SQL for this question');
+}
+
 app.post('/mcp', async (req, res) => {
   console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
 
-  const { method, id = null, params = {} } = req.body || {};
+  const body = req.body || {};
+  const method = body.method;
+  const id = body.id || null;
+  const params = body.params || {};
 
-  /* 1️⃣ INITIALIZE */
+  /* INITIALIZE */
   if (method === 'initialize') {
     return res.json({
       jsonrpc: '2.0',
-      id,
+      id: id,
       result: {
         protocolVersion: '2024-11-05',
-        capabilities: {
-          tools: { list: true, call: true }
-        },
-        serverInfo: {
-          name: 'MySQL Query MCP Server',
-          version: '1.0.0'
-        }
+        capabilities: { tools: { list: true, call: true } },
+        serverInfo: { name: 'MySQL MCP Server', version: '1.0.0' }
       }
     });
   }
 
-  /* 2️⃣ TOOLS LIST */
+  /* TOOLS LIST */
   if (method === 'tools/list') {
     return res.json({
       jsonrpc: '2.0',
-      id,
+      id: id,
       result: {
         tools: [
           {
             name: 'generate_mysql_query',
-            description:
-              'Generate a MySQL query in response to a user question about a specific database.',
+            description: 'Generate and execute a MySQL query',
             inputSchema: {
               type: 'object',
-              properties: {
-                database_schema: {
-                  type: 'string',
-                  description:
-                    'Description of the MySQL database schema, including tables and columns.'
-                },
-                user_question: {
-                  type: 'string',
-                  description:
-                    'The user’s question or requirement to be translated into a MySQL query.'
-                }
-              },
               required: ['database_schema', 'user_question'],
-              additionalProperties: false
+              properties: {
+                database_schema: { type: 'string' },
+                user_question: { type: 'string' }
+              }
             }
           }
         ]
@@ -68,77 +82,65 @@ app.post('/mcp', async (req, res) => {
     });
   }
 
-  /* 3️⃣ TOOLS CALL */
+  /* TOOLS CALL */
   if (method === 'tools/call') {
-    const { name, arguments: args } = params;
-
-    if (name !== 'generate_mysql_query') {
-      return res.json({
-        jsonrpc: '2.0',
-        id,
-        error: { code: -32602, message: 'Unknown tool' }
-      });
-    }
-
     try {
-      // 🔁 Call your external API here
-      const apiResponse = await fetch(
-        'https://YOUR_EXTERNAL_API_ENDPOINT',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer YOUR_API_KEY' // optional
-          },
-          body: JSON.stringify({
-            database_schema: args.database_schema,
-            user_question: args.user_question
-          })
-        }
+      const name = params.name;
+      const args = params.arguments || {};
+
+      if (name !== 'generate_mysql_query') {
+        throw new Error('Unknown tool');
+      }
+
+      /* 🧠 Generate SQL locally */
+      const sqlQuery = generateMysqlQuery(
+        args.database_schema,
+        args.user_question
       );
 
-      const apiResult = await apiResponse.json();
+      /* 🔒 Safety */
+      if (!/^select/i.test(sqlQuery.trim())) {
+        throw new Error('Only SELECT queries allowed');
+      }
+
+      /* ▶️ Execute SQL */
+      const result = await db.query(sqlQuery);
+      const rows = result[0];
 
       return res.json({
         jsonrpc: '2.0',
-        id,
+        id: id,
         result: {
           content: [
             {
-              type: 'text',
-              text: apiResult.query || JSON.stringify(apiResult, null, 2)
+              type: 'json',
+              data: {
+                sql: sqlQuery,
+                result: rows
+              }
             }
           ]
         }
       });
     } catch (err) {
-      console.error('❌ External API error:', err);
+      console.error('❌ Error:', err.message);
 
       return res.json({
         jsonrpc: '2.0',
-        id,
+        id: id,
         result: {
           content: [
-            {
-              type: 'text',
-              text: 'Failed to generate MySQL query via external API.'
-            }
+            { type: 'text', text: err.message }
           ]
         }
       });
     }
   }
 
-  /* Notifications */
-  if (method && method.startsWith('notifications/')) {
-    return res.json({ jsonrpc: '2.0', id, result: {} });
-  }
-
-  /* Fallback */
   return res.json({
     jsonrpc: '2.0',
-    id,
-    error: { code: -32601, message: `Method "${method}" not found` }
+    id: id,
+    error: { code: -32601, message: 'Method not found' }
   });
 });
 
