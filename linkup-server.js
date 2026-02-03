@@ -1,89 +1,111 @@
-const express = require('express');
-const mysql = require('mysql2/promise');
+const express = require("express");
+const mysql = require("mysql2/promise");
 
 const app = express();
+app.use(express.json({ limit: "1mb" }));
 
-/* MUST be first */
-app.use(express.json({ limit: '1mb' }));
+/* =========================
+   🔐 MYSQL (READ-ONLY)
+   ========================= */
 
-/* 🔗 MySQL connection */
-const db = mysql.createPool({
-  host: 'mysql',
-  user: 'admin',
-  password: 'v5knfNxAXe',
-  database: 'stage_pmsnapit',
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_READONLY_USER,
+  password: process.env.DB_READONLY_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
   connectionLimit: 10
 });
 
-/* Health check */
-app.get('/mcp', (req, res) => {
-  res.json({ status: 'ok', protocol: 'mcp' });
-});
+/* =========================
+   🔐 SQL SAFETY CHECK
+   ========================= */
 
-/* 🧠 SIMPLE SQL GENERATOR */
-function generateMysqlQuery(schema, question) {
-  const q = question.toLowerCase();
+function assertReadOnlySelect(sql) {
+  const normalized = sql.trim().toLowerCase();
 
-  // Example: "how many leads created today"
-  if (q.indexOf('how many') !== -1 && q.indexOf('lead') !== -1) {
-    return `
-      SELECT COUNT(*) AS total_leads
-      FROM lead
-      WHERE DATE(created_at) = CURDATE()
-    `;
+  if (!normalized.startsWith("select")) {
+    throw new Error("Only SELECT queries are allowed");
   }
 
-  // fallback
-  throw new Error('Unable to generate SQL for this question');
+  const forbidden = [
+    "insert ",
+    "update ",
+    "delete ",
+    "drop ",
+    "alter ",
+    "truncate ",
+    "create ",
+    "merge ",
+    "grant ",
+    "revoke ",
+    "execute ",
+    "call ",
+    ";"
+  ];
+
+  for (const word of forbidden) {
+    if (normalized.includes(word)) {
+      throw new Error(`Forbidden SQL keyword detected: ${word.trim()}`);
+    }
+  }
 }
 
-app.post('/mcp', async (req, res) => {
-  console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
+/* =========================
+   🧪 HEALTH
+   ========================= */
 
-  const body = req.body || {};
-  const method = body.method;
-  const id = body.id || null;
-  const params = body.params || {};
+app.get("/mcp", (_, res) => {
+  res.json({ status: "ok", protocol: "mcp" });
+});
 
-  /* INITIALIZE */
-  if (method === 'initialize') {
+/* =========================
+   🧠 MCP HANDLER
+   ========================= */
+
+app.post("/mcp", async (req, res) => {
+  const { method, id = null, params = {} } = req.body;
+
+  /* 1️⃣ INITIALIZE */
+  if (method === "initialize") {
     return res.json({
-      jsonrpc: '2.0',
-      id: id,
+      jsonrpc: "2.0",
+      id,
       result: {
-        protocolVersion: '2024-11-05',
+        protocolVersion: "2024-11-05",
         capabilities: { tools: { list: true, call: true } },
-        serverInfo: { name: 'MySQL MCP Server', version: '1.0.0' }
+        serverInfo: {
+          name: "Linkup MySQL MCP",
+          version: "1.0.0"
+        }
       }
     });
   }
 
-  /* TOOLS LIST */
-  if (method === 'tools/list') {
+  /* 2️⃣ TOOLS LIST */
+  if (method === "tools/list") {
     return res.json({
-      jsonrpc: '2.0',
-      id: id,
+      jsonrpc: "2.0",
+      id,
       result: {
-         tools: [
+        tools: [
           {
-            name: 'generate_mysql_query',
+            name: "generate_mysql_query",
             description:
-              'Generate a MySQL query in response to a user question about a specific database.',
+              "Generate and execute a READ-ONLY MySQL SELECT query.",
             inputSchema: {
-              type: 'object',
+              type: "object",
               properties: {
-                database_schema: {
-                  type: 'string',
-                  description:
-                    'Description of the MySQL database schema, including tables and columns.'
+                query: {
+                  type: "string",
+                  description: "SELECT-only MySQL query"
                 },
-                user_question: {
-                  type: 'string',
-                  description:
-                    'The user’s question or requirement to be translated into a MySQL query.'
+                description: {
+                  type: "string",
+                  description: "Explanation of what the query does"
                 }
               },
-              required: ['database_schema', 'user_question'],
+              required: ["query"],
               additionalProperties: false
             }
           }
@@ -92,68 +114,75 @@ app.post('/mcp', async (req, res) => {
     });
   }
 
-  /* TOOLS CALL */
-  if (method === 'tools/call') {
+  /* 3️⃣ TOOL CALL */
+  if (method === "tools/call") {
+    const { name, arguments: args } = params;
+
+    if (name !== "generate_mysql_query") {
+      return res.json({
+        jsonrpc: "2.0",
+        id,
+        error: { code: -32602, message: "Unknown tool" }
+      });
+    }
+
     try {
-      const name = params.name;
-      const args = params.arguments || {};
+      const sql = args.query;
 
-      if (name !== 'generate_mysql_query') {
-        throw new Error('Unknown tool');
-      }
+      // 🔐 Validate SQL
+      assertReadOnlySelect(sql);
 
-      /* 🧠 Generate SQL locally */
-      const sqlQuery = generateMysqlQuery(
-        args.database_schema,
-        args.user_question
-      );
-
-      /* 🔒 Safety */
-      if (!/^select/i.test(sqlQuery.trim())) {
-        throw new Error('Only SELECT queries allowed');
-      }
-
-      /* ▶️ Execute SQL */
-      const result = await db.query(sqlQuery);
-      const rows = result[0];
+      // 🟢 Execute query
+      const [rows] = await pool.query(sql);
 
       return res.json({
-        jsonrpc: '2.0',
-        id: id,
+        jsonrpc: "2.0",
+        id,
         result: {
           content: [
             {
-              type: 'json',
-              data: {
-                sql: sqlQuery,
-                result: rows
+              type: "json",
+              json: {
+                description: args.description || null,
+                row_count: rows.length,
+                rows
               }
             }
           ]
         }
       });
     } catch (err) {
-      console.error('❌ Error:', err.message);
-
       return res.json({
-        jsonrpc: '2.0',
-        id: id,
+        jsonrpc: "2.0",
+        id,
         result: {
           content: [
-            { type: 'text', text: err.message }
+            {
+              type: "text",
+              text: `Query failed or rejected: ${err.message}`
+            }
           ]
         }
       });
     }
   }
 
+  /* Notifications */
+  if (method?.startsWith("notifications/")) {
+    return res.json({ jsonrpc: "2.0", id, result: {} });
+  }
+
   return res.json({
-    jsonrpc: '2.0',
-    id: id,
-    error: { code: -32601, message: 'Method not found' }
+    jsonrpc: "2.0",
+    id,
+    error: { code: -32601, message: "Method not found" }
   });
 });
 
+/* =========================
+   🚀 START
+   ========================= */
+
 app.listen(4000, () => {
-  console.log('✅ MCP server running on port 4000');
+  console.log("✅ MCP MySQL server running on port 4000");
 });
