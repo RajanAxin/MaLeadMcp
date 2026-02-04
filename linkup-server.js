@@ -102,12 +102,47 @@ app.post("/mcp", async (req, res) => {
 
       console.log("✅ EXTERNAL API RESPONSE:", apiResult);
 
+      let rows = [];
+
+    if (Array.isArray(apiResult?.result)) {
+      rows = apiResult.result;
+    } else if (apiResult?.result && typeof apiResult.result === "object") {
+      rows = [apiResult.result];
+    }
+
+    /* ===========================
+       🧾 FORMAT OUTPUT
+    ============================ */
+
+    let outputText = "";
+
+    if (rows.length > 0) {
+      const keys = Object.keys(rows[0]);
+
+      outputText = rows
+        .map((row, index) =>
+          `${index + 1}. ` +
+          keys.map(k => `${row[k]}`).join(" | ")
+        )
+        .join("\n");
+    } else {
+      outputText = apiResult?.message || "No data found.";
+    }
+
+    /* ===========================
+       ✅ MCP-COMPLIANT RESPONSE
+    ============================ */
+
       return res.json({
         jsonrpc: "2.0",
         id,
         result: {
-          result: (apiResult && apiResult.result) ? apiResult.result : null,
-          error: (apiResult && apiResult.error) ? apiResult.error : null
+          content: [
+            {
+              type: "text",
+              text: outputText
+            }
+          ]
         }
       });
     } catch (err) {
