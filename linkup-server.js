@@ -104,8 +104,8 @@ app.post("/mcp", async (req, res) => {
         jsonrpc: "2.0",
         id,
         result: {
-          result: apiResult?.result ?? null,
-          error: apiResult?.error ?? null
+          result: (apiResult && apiResult.result) ? apiResult.result : null,
+          error: (apiResult && apiResult.error) ? apiResult.error : null
         }
       });
     } catch (err) {
