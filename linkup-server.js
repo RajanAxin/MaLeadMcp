@@ -8,11 +8,20 @@ app.use(express.json({ limit: "1mb" }));
    🔐 MYSQL (READ-ONLY)
    ========================= */
 
+// const pool = mysql.createPool({
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_READONLY_USER,
+//   password: process.env.DB_READONLY_PASSWORD,
+//   database: process.env.DB_NAME,
+//   waitForConnections: true,
+//   connectionLimit: 10
+// });
+
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_READONLY_USER,
-  password: process.env.DB_READONLY_PASSWORD,
-  database: process.env.DB_NAME,
+  host: 'stage-tweet-talk.cg0ahsyhitn1.us-east-2.rds.amazonaws.com',
+  user: 'admin',
+  password: 'v5knfNxAXe',
+  database: 'stage_pmsnapit',
   waitForConnections: true,
   connectionLimit: 10
 });
