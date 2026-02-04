@@ -45,24 +45,18 @@ app.post('/mcp', async (req, res) => {
           {
             name: 'generate_mysql_query',
             description:
-              'Generate a MySQL query in response to a user question about a specific database.',
-              "strict": true,
+              'Send data to my API and return the response',
+              "strict": false,
             inputSchema: {
               type: 'object',
               properties: {
-                database_schema: {
+                user_input: {
                   type: 'string',
                   description:
-                    'Description of the MySQL database schema, including tables and columns.'
-                },
-                user_question: {
-                  type: 'string',
-                  description:
-                    'The user’s question or requirement to be translated into a MySQL query.'
+                    'The message or data to send'
                 }
               },
-              required: ['database_schema', 'user_question'],
-              additionalProperties: false
+              required: ['user_input']
             }
           }
         ]
@@ -93,7 +87,6 @@ app.post('/mcp', async (req, res) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            database_schema: args.database_schema,
             user_input: args.user_question
           })
         }
