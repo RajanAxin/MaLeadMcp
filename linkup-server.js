@@ -1,120 +1,66 @@
-const express = require("express");
-const mysql = require("mysql2/promise");
+const express = require('express');
+const fetch = require('node-fetch'); // v2
+
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
 
-/* =========================
-   🔐 MYSQL (READ-ONLY)
-   ========================= */
+/* MUST be first */
+app.use(express.json({ limit: '1mb' }));
 
-// const pool = mysql.createPool({
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_READONLY_USER,
-//   password: process.env.DB_READONLY_PASSWORD,
-//   database: process.env.DB_NAME,
-//   waitForConnections: true,
-//   connectionLimit: 10
-// });
-
-const pool = mysql.createPool({
-  host: 'stage-tweet-talk.cg0ahsyhitn1.us-east-2.rds.amazonaws.com',
-  user: 'admin',
-  password: 'v5knfNxAXe',
-  database: 'stage_pmsnapit',
-  waitForConnections: true,
-  connectionLimit: 10
+/* Health check */
+app.get('/mcp', (req, res) => {
+  res.json({ status: 'ok', protocol: 'mcp' });
 });
 
-/* =========================
-   🔐 SQL SAFETY CHECK
-   ========================= */
+app.post('/mcp', async (req, res) => {
+  console.log('⬇️ MCP REQUEST:', JSON.stringify(req.body, null, 2));
 
-function assertReadOnlySelect(sql) {
-  const normalized = sql.trim().toLowerCase();
-
-  if (!normalized.startsWith("select")) {
-    throw new Error("Only SELECT queries are allowed");
-  }
-
-  const forbidden = [
-    "insert ",
-    "update ",
-    "delete ",
-    "drop ",
-    "alter ",
-    "truncate ",
-    "create ",
-    "merge ",
-    "grant ",
-    "revoke ",
-    "execute ",
-    "call ",
-    ";"
-  ];
-
-  for (const word of forbidden) {
-    if (normalized.includes(word)) {
-      throw new Error(`Forbidden SQL keyword detected: ${word.trim()}`);
-    }
-  }
-}
-
-/* =========================
-   🧪 HEALTH
-   ========================= */
-
-app.get("/mcp", (_, res) => {
-  res.json({ status: "ok", protocol: "mcp" });
-});
-
-/* =========================
-   🧠 MCP HANDLER
-   ========================= */
-
-app.post("/mcp", async (req, res) => {
-  const { method, id = null, params = {} } = req.body;
+  const { method, id = null, params = {} } = req.body || {};
 
   /* 1️⃣ INITIALIZE */
-  if (method === "initialize") {
+  if (method === 'initialize') {
     return res.json({
-      jsonrpc: "2.0",
+      jsonrpc: '2.0',
       id,
       result: {
-        protocolVersion: "2024-11-05",
-        capabilities: { tools: { list: true, call: true } },
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: { list: true, call: true }
+        },
         serverInfo: {
-          name: "Linkup MySQL MCP",
-          version: "1.0.0"
+          name: 'MySQL Query MCP Server',
+          version: '1.0.0'
         }
       }
     });
   }
 
   /* 2️⃣ TOOLS LIST */
-  if (method === "tools/list") {
+  if (method === 'tools/list') {
     return res.json({
-      jsonrpc: "2.0",
+      jsonrpc: '2.0',
       id,
       result: {
         tools: [
           {
-            name: "generate_mysql_query",
+            name: 'generate_mysql_query',
             description:
-              "Generate and execute a READ-ONLY MySQL SELECT query.",
+              'Generate a MySQL query in response to a user question about a specific database.',
             inputSchema: {
-              type: "object",
+              type: 'object',
               properties: {
-                query: {
-                  type: "string",
-                  description: "SELECT-only MySQL query"
+                database_schema: {
+                  type: 'string',
+                  description:
+                    'Description of the MySQL database schema, including tables and columns.'
                 },
-                description: {
-                  type: "string",
-                  description: "Explanation of what the query does"
+                user_question: {
+                  type: 'string',
+                  description:
+                    'The user’s question or requirement to be translated into a MySQL query.'
                 }
               },
-              required: ["query"],
+              required: ['database_schema', 'user_question'],
               additionalProperties: false
             }
           }
@@ -123,52 +69,59 @@ app.post("/mcp", async (req, res) => {
     });
   }
 
-  /* 3️⃣ TOOL CALL */
-  if (method === "tools/call") {
+  /* 3️⃣ TOOLS CALL */
+  if (method === 'tools/call') {
     const { name, arguments: args } = params;
 
-    if (name !== "generate_mysql_query") {
+    if (name !== 'generate_mysql_query') {
       return res.json({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id,
-        error: { code: -32602, message: "Unknown tool" }
+        error: { code: -32602, message: 'Unknown tool' }
       });
     }
 
     try {
-      const sql = args.query;
+      // 🔁 Call your external API here
+      const apiResponse = await fetch(
+        'https://stage.linkup.software/tools/call-external-api',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            database_schema: args.database_schema,
+            user_input: args.user_question
+          })
+        }
+      );
 
-      // 🔐 Validate SQL
-      assertReadOnlySelect(sql);
-
-      // 🟢 Execute query
-      const [rows] = await pool.query(sql);
+      const apiResult = await apiResponse.json();
 
       return res.json({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id,
         result: {
           content: [
             {
-              type: "json",
-              json: {
-                description: args.description || null,
-                row_count: rows.length,
-                rows
-              }
+              type: 'text',
+              text: apiResult.result || JSON.stringify(apiResult, null, 2)
             }
           ]
         }
       });
     } catch (err) {
+      console.error('❌ External API error:', err);
+
       return res.json({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         id,
         result: {
           content: [
             {
-              type: "text",
-              text: `Query failed or rejected: ${err.message}`
+              type: 'text',
+              text: 'Failed to generate MySQL query via external API.'
             }
           ]
         }
@@ -177,21 +130,18 @@ app.post("/mcp", async (req, res) => {
   }
 
   /* Notifications */
-  if (method && method.startsWith("notifications/")) {
-    return res.json({ jsonrpc: "2.0", id, result: {} });
+  if (method && method.startsWith('notifications/')) {
+    return res.json({ jsonrpc: '2.0', id, result: {} });
   }
 
+  /* Fallback */
   return res.json({
-    jsonrpc: "2.0",
+    jsonrpc: '2.0',
     id,
-    error: { code: -32601, message: "Method not found" }
+    error: { code: -32601, message: `Method "${method}" not found` }
   });
 });
 
-/* =========================
-   🚀 START
-   ========================= */
-
 app.listen(4000, () => {
-  console.log("✅ MCP MySQL server running on port 4000");
+  console.log('✅ MCP server running on port 4000');
 });
