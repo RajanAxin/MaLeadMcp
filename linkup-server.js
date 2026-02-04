@@ -104,11 +104,12 @@ app.post("/mcp", async (req, res) => {
 
       let rows = [];
 
-    if (Array.isArray(apiResult?.result)) {
-      rows = apiResult.result;
-    } else if (apiResult?.result && typeof apiResult.result === "object") {
-      rows = [apiResult.result];
-    }
+      if (apiResult && Array.isArray(apiResult.result)) {
+        rows = apiResult.result;
+      } else if (apiResult && apiResult.result && typeof apiResult.result === "object") {
+        rows = [apiResult.result];
+      }
+
 
     /* ===========================
        🧾 FORMAT OUTPUT
