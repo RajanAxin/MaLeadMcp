@@ -100,8 +100,6 @@ app.post("/mcp", async (req, res) => {
 
       const apiResult = await apiResponse.json();
 
-      console.log("✅ EXTERNAL API RESPONSE:", apiResult);
-
       let rows = [];
 
       if (apiResult && Array.isArray(apiResult.result)) {
@@ -110,42 +108,44 @@ app.post("/mcp", async (req, res) => {
         rows = [apiResult.result];
       }
 
+      let outputText = "";
 
-    /* ===========================
-       🧾 FORMAT OUTPUT
-    ============================ */
+      if (rows.length > 0) {
+        var keys = Object.keys(rows[0]);
+      
+        outputText = rows
+          .map(function (row, index) {
+            return (
+              (index + 1) + ". " +
+              keys.map(function (k) {
+                return row[k];
+              }).join(" | ")
+            );
+          })
+          .join("\n");
+      } else {
+        outputText = (apiResult && apiResult.message)
+          ? apiResult.message
+          : "No data found.";
+      }
 
-    let outputText = "";
-
-    if (rows.length > 0) {
-      const keys = Object.keys(rows[0]);
-
-      outputText = rows
-        .map((row, index) =>
-          `${index + 1}. ` +
-          keys.map(k => `${row[k]}`).join(" | ")
-        )
-        .join("\n");
-    } else {
-      outputText = apiResult?.message || "No data found.";
-    }
-
-    /* ===========================
+      /* ===========================
        ✅ MCP-COMPLIANT RESPONSE
     ============================ */
 
-      return res.json({
-        jsonrpc: "2.0",
-        id,
-        result: {
-          content: [
-            {
-              type: "text",
-              text: outputText
-            }
-          ]
-        }
-      });
+    return res.json({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        content: [
+          {
+            type: "text",
+            text: outputText
+          }
+        ]
+      }
+    });
+
     } catch (err) {
       console.error("❌ TOOL EXECUTION ERROR:", err);
 
