@@ -46,6 +46,7 @@ app.post('/mcp', async (req, res) => {
             name: 'generate_mysql_query',
             description:
               'Generate a MySQL query in response to a user question about a specific database.',
+              "strict": true,
             inputSchema: {
               type: 'object',
               properties: {
@@ -82,6 +83,7 @@ app.post('/mcp', async (req, res) => {
     }
 
     try {
+      console.log('args,', args);
       // 🔁 Call your external API here
       const apiResponse = await fetch(
         'https://stage.linkup.software/tools/call-external-api',
