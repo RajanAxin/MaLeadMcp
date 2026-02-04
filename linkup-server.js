@@ -80,7 +80,9 @@ app.post("/mcp", async (req, res) => {
       const USERNAME = "snapit";
       const PASSWORD = "mysnapit22";
     
-      const token = btoa(`${USERNAME}:${PASSWORD}`);
+      const authToken = Buffer.from(
+        `${USERNAME}:${PASSWORD}`
+      ).toString("base64");
       /* 🔥 IMPORTANT: argument name MUST match inputSchema */
       const apiResponse = await fetch(
         "https://stage.linkup.software/api/tools/call-external-api",
@@ -88,7 +90,7 @@ app.post("/mcp", async (req, res) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Basic ${token}`
+            "Authorization": `Basic ${authToken}`
           },
           body: JSON.stringify({
             user_input: args.user_input // ✅ FIXED
