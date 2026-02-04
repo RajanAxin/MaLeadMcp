@@ -77,14 +77,18 @@ app.post("/mcp", async (req, res) => {
 
     try {
       console.log("🧠 TOOL ARGS:", args);
-
+      const USERNAME = "snapit";
+      const PASSWORD = "mysnapit22";
+    
+      const token = btoa(`${USERNAME}:${PASSWORD}`);
       /* 🔥 IMPORTANT: argument name MUST match inputSchema */
       const apiResponse = await fetch(
-        "https://stage.linkup.software/tools/call-external-api",
+        "https://stage.linkup.software/api/tools/call-external-api",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${token}`
           },
           body: JSON.stringify({
             user_input: args.user_input // ✅ FIXED
@@ -100,15 +104,8 @@ app.post("/mcp", async (req, res) => {
         jsonrpc: "2.0",
         id,
         result: {
-          content: [
-            {
-              type: "text",
-              text:
-                apiResult.result ||
-                apiResult.message ||
-                JSON.stringify(apiResult)
-            }
-          ]
+          result: apiResult?.result ?? null,
+          error: apiResult?.error ?? null
         }
       });
     } catch (err) {
