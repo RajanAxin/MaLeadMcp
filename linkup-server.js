@@ -43,7 +43,7 @@ app.post('/mcp', async (req, res) => {
       result: {
         tools: [
           {
-            name: 'generate_mysql_query',
+            name: 'call_external_api',
             description:
               'Send data to my API and return the response',
               "strict": false,
@@ -68,7 +68,7 @@ app.post('/mcp', async (req, res) => {
   if (method === 'tools/call') {
     const { name, arguments: args } = params;
 
-    if (name !== 'generate_mysql_query') {
+    if (name !== 'call_external_api') {
       return res.json({
         jsonrpc: '2.0',
         id,
