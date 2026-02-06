@@ -106,19 +106,12 @@ app.post("/mcp", async (req, res) => {
        * 🔥 IMPORTANT
        * Return STRUCTURED DATA — NOT TEXT
        */
-      let rows = [];
-
-      if (Array.isArray(apiResult?.result)) {
-        rows = apiResult.result;
-      } else if (typeof apiResult?.result === "object") {
-        rows = [apiResult.result];
-      }
-      console.error("answer:", rows);
+      console.error("answer:", apiResult);
       return res.json({
         jsonrpc: "2.0",
         id,
         result: {
-          data: rows   // ✅ THIS IS THE KEY FIX
+          data: apiResult   // ✅ THIS IS THE KEY FIX
         }
       });
 
