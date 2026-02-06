@@ -113,7 +113,7 @@ app.post("/mcp", async (req, res) => {
       } else if (typeof apiResult?.result === "object") {
         rows = [apiResult.result];
       }
-
+      console.error("answer:", rows);
       return res.json({
         jsonrpc: "2.0",
         id,
