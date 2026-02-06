@@ -44,14 +44,14 @@ app.post("/mcp", async (req, res) => {
           {
             name: "call_external_api",
             description:
-              "Execute reporting logic by sending input to an external API and returning its response",
+              "Execute reporting SQL and return structured result data",
             strict: false,
             inputSchema: {
               type: "object",
               properties: {
                 user_input: {
                   type: "string",
-                  description: "SQL or reporting instruction to send"
+                  description: "SQL query to execute (SELECT only)"
                 }
               },
               required: ["user_input"],
@@ -77,74 +77,50 @@ app.post("/mcp", async (req, res) => {
 
     try {
       console.log("🧠 TOOL ARGS:", args);
+
       const USERNAME = "snapit";
       const PASSWORD = "mysnapit22";
-    
+
       const authToken = Buffer.from(
         `${USERNAME}:${PASSWORD}`
       ).toString("base64");
-      /* 🔥 IMPORTANT: argument name MUST match inputSchema */
+
+      /* Call your existing backend API */
       const apiResponse = await fetch(
         "https://stage.linkup.software/api/tools/call-external-api",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Basic ${authToken}`
+            Authorization: `Basic ${authToken}`
           },
           body: JSON.stringify({
-            user_input: args.user_input // ✅ FIXED
+            user_input: args.user_input
           })
         }
       );
 
       const apiResult = await apiResponse.json();
 
+      /**
+       * 🔥 IMPORTANT
+       * Return STRUCTURED DATA — NOT TEXT
+       */
       let rows = [];
 
-      if (apiResult && Array.isArray(apiResult.result)) {
+      if (Array.isArray(apiResult?.result)) {
         rows = apiResult.result;
-      } else if (apiResult && apiResult.result && typeof apiResult.result === "object") {
+      } else if (typeof apiResult?.result === "object") {
         rows = [apiResult.result];
       }
 
-      let outputText = "";
-
-      if (rows.length > 0) {
-        var keys = Object.keys(rows[0]);
-      
-        outputText = rows
-          .map(function (row, index) {
-            return (
-              (index + 1) + ". " +
-              keys.map(function (k) {
-                return row[k];
-              }).join(" | ")
-            );
-          })
-          .join("\n");
-      } else {
-        outputText = (apiResult && apiResult.message)
-          ? apiResult.message
-          : "No data found.";
-      }
-
-      /* ===========================
-       ✅ MCP-COMPLIANT RESPONSE
-    ============================ */
-
-    return res.json({
-      jsonrpc: "2.0",
-      id,
-      result: {
-        content: [
-          {
-            type: "text",
-            text: outputText
-          }
-        ]
-      }
-    });
+      return res.json({
+        jsonrpc: "2.0",
+        id,
+        result: {
+          data: rows   // ✅ THIS IS THE KEY FIX
+        }
+      });
 
     } catch (err) {
       console.error("❌ TOOL EXECUTION ERROR:", err);
@@ -153,12 +129,8 @@ app.post("/mcp", async (req, res) => {
         jsonrpc: "2.0",
         id,
         result: {
-          content: [
-            {
-              type: "text",
-              text: "Failed to execute external reporting API"
-            }
-          ]
+          data: [],
+          error: "Failed to execute external reporting API"
         }
       });
     }
