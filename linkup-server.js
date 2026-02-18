@@ -7,11 +7,11 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 /* Health check */
-app.get("/mcp", (req, res) => {
+app.get("/api-mcp", (req, res) => {
   res.json({ status: "ok", protocol: "mcp" });
 });
 
-app.post("/mcp", async (req, res) => {
+app.post("/api-mcp", async (req, res) => {
   console.log("⬇️ MCP REQUEST:", JSON.stringify(req.body, null, 2));
 
   const { method, id = null, params = {} } = req.body || {};
